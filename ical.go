@@ -53,6 +53,17 @@ func EncodeDateProperty(name string, t time.Time) string {
 	return name + output
 }
 
+func EncodeAllDayDateProperty(name string, t time.Time) string {
+	var output string
+	zone, _ := t.Zone()
+	if zone != "UTC" && zone != "" {
+		output = ";TZID=" + zone + ";VALUE=DATE:" + t.Format("20060102")
+	} else {
+		output = ";VALUE=DATE:" + t.Format("20060102")
+	}
+	return name + output
+}
+
 func EscapeTextType(input string) string {
 	output := strings.Replace(input, "\\", "\\\\", -1)
 	output = strings.Replace(output, ";", "\\;", -1)
@@ -320,6 +331,7 @@ type CalendarItem struct {
 	alarmDate       time.Time
 	sequence        int
 	freq            string
+	isAllDay        bool
 }
 
 func (this *CalendarItem) SetId(v string)               { this.id = v }
@@ -348,6 +360,8 @@ func (this *CalendarItem) SetSequence(v int)            { this.sequence = v }
 func (this *CalendarItem) Sequence() int                { return this.sequence }
 func (this *CalendarItem) SetFreq(v string)             { this.freq = v }
 func (this *CalendarItem) Freq() string                 { return this.freq } // WEEKLY, DAILY
+func (this *CalendarItem) SetIsAllDay(v bool)           { this.isAllDay = v }
+func (this *CalendarItem) IsAllDay() bool               { return this.isAllDay }
 
 // BEGIN:VEVENT
 // UID:549b906570677f8379000023
@@ -364,8 +378,13 @@ func (this *CalendarItem) ICalString(target string) string {
 	s += "UID:" + this.Id() + "\n"
 	s += "SUMMARY:" + EscapeTextType(this.Summary()) + "\n"
 	s += EncodeDateProperty("DTSTAMP", this.ModifiedDate()) + "\n"
-	s += EncodeDateProperty("DTSTART", this.StartDate()) + "\n"
-	s += EncodeDateProperty("DTEND", this.EndDate()) + "\n"
+	if this.IsAllDay() {
+		s += EncodeAllDayDateProperty("DTSTART", this.StartDate()) + "\n"
+		s += EncodeAllDayDateProperty("DTEND", this.EndDate()) + "\n"
+	} else {
+		s += EncodeDateProperty("DTSTART", this.StartDate()) + "\n"
+		s += EncodeDateProperty("DTEND", this.EndDate()) + "\n"
+	}
 	if this.Description() != "" {
 		s += "DESCRIPTION:" + EncodeTextType(this.Description()) + "\n"
 	}
